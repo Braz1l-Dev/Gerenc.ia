@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Gerenc.ia{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Visão geral das suas finanças{% endblock %}
+
+{% block content %}
+
+<!-- Seletor de Mês -->
+<div class="month-selector">
+    <button class="month-nav" id="prevMonth" title="Mês anterior">◀</button>
+    <select id="monthSelect" class="month-select" onchange="changeMonth(this.value)">
+        {% for m in months_list %}
+            <option value="{{ m.value }}" {% if m.value == month %}selected{% endif %}>
+                {{ m.label }}
+            </option>
+        {% endfor %}
+    </select>
+    <button class="month-nav" id="nextMonth" title="Próximo mês">▶</button>
+</div>
+
+<!-- Cards de Resumo -->
+<div class="summary-cards">
+    <div class="summary-card card-balance">
+        <div class="card-icon-wrapper balance-icon">
+            <span>💰</span>
+        </div>
+        <div class="card-info">
+            <span class="card-label">Saldo do mês</span>
+            <span class="card-value {% if summary.balance >= 0 %}positive{% else %}negative{% endif %}">
+                R$ {{ "%.2f"|format(summary.balance) }}
+            </span>
+        </div>
+    </div>
+
+    <div class="summary-card card-income">
+        <div class="card-icon-wrapper income-icon">
+            <span>📈</span>
+        </div>
+        <div class="card-info">
+            <span class="card-label">Receitas</span>
+            <span class="card-value positive">
+                R$ {{ "%.2f"|format(summary.income) }}
+            </span>
+        </div>
+    </div>
+
+    <div class="summary-card card-expenses">
+        <div class="card-icon-wrapper expenses-icon">
+            <span>📉</span>
+        </div>
+        <div class="card-info">
+            <span class="card-label">Despesas</span>
+            <span class="card-value negative">
+                R$ {{ "%.2f"|format(summary.expenses) }}
+            </span>
+        </div>
+    </div>
+
+    <div class="summary-card card-budgets">
+        <div class="card-icon-wrapper budgets-icon">
+            <span>🎯</span>
+        </div>
+        <div class="card-info">
+            <span class="card-label">Orçamentos definidos</span>
+            <span class="card-value">{{ budgets_data|length }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="charts-row">
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3>Despesas por Categoria</h3>
+        </div>
+        <div class="chart-body">
+            {% if chart_amounts %}
+                <canvas id="categoryChart"></canvas>
+            {% else %}
+                <div class="chart-empty">
+                    <span class="empty-icon">📊</span>
+                    <p>Nenhuma despesa registrada neste mês</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="chart-card">
+        <div class="chart-header">
+            <h3>Fluxo Diário</h3>
+        </div>
+        <div class="chart-body">
+            {% if daily_labels %}
+                <canvas id="dailyChart"></canvas>
+            {% else %}
+                <div class="chart-empty">
+                    <span class="empty-icon">📈</span>
+                    <p>Nenhuma transação registrada neste mês</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Linha inferior -->
+<div class="bottom-row">
+    <!-- Últimas Transações -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3>Últimas Transações</h3>
+            <a href="/transactions?month={{ month }}" class="section-link">Ver todas →</a>
+        </div>
+        <div class="section-body">
+            {% if recent_transactions %}
+                <div class="transactions-list">
+                    {% for t in recent_transactions %}
+                        <div class="transaction-item">
+                            <div class="transaction-left">
+                                <div class="transaction-icon" data-color="{{ t.category_color or '#6B7280' }}">
+                                    {{ t.category_icon or '📦' }}
+                                </div>
+                                <div class="transaction-info">
+                                    <span class="transaction-desc">{{ t.description }}</span>
+                                    <span class="transaction-category">{{ t.category_name or 'Sem categoria' }}</span>
+                                </div>
+                            </div>
+                            <div class="transaction-right">
+                                <span class="transaction-amount {% if t.type == 'receita' %}income{% else %}expense{% endif %}">
+                                    {% if t.type == 'receita' %}+{% else %}-{% endif %} R$ {{ "%.2f"|format(t.amount) }}
+                                </span>
+                                <span class="transaction-date">
+                                    {{ t.date[8:10] }}/{{ t.date[5:7] }}
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="section-empty">
+                    <span class="empty-icon">💳</span>
+                    <p>Nenhuma transação neste mês</p>
+                    <a href="/transactions" class="btn-add-small">+ Adicionar transação</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Orçamentos -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3>Orçamentos</h3>
+            <a href="/budgets?month={{ month }}" class="section-link">Gerenciar →</a>
+        </div>
+        <div class="section-body">
+            {% if budgets_data %}
+                <div class="budgets-list">
+                    {% for b in budgets_data %}
+                        <div class="budget-item">
+                            <div class="budget-top">
+                                <div class="budget-left">
+                                    <span class="budget-icon">{{ b.category_icon }}</span>
+                                    <span class="budget-name">{{ b.category_name }}</span>
+                                </div>
+                                <div class="budget-right">
+                                    <span class="budget-spent {% if b.over_budget %}over{% endif %}">
+                                        R$ {{ "%.2f"|format(b.spent) }}
+                                    </span>
+                                    <span class="budget-separator">/</span>
+                                    <span class="budget-total">R$ {{ "%.2f"|format(b.budget_amount) }}</span>
+                                </div>
+                            </div>
+                            <div class="budget-bar-wrapper">
+                                <div class="budget-bar"
+                                     data-width="{{ b.percentage }}"
+                                     data-color="{% if b.over_budget %}#EF4444{% else %}{{ b.category_color }}{% endif %}">
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="section-empty">
+                    <span class="empty-icon">🎯</span>
+                    <p>Nenhum orçamento definido</p>
+                    <a href="/budgets" class="btn-add-small">+ Definir orçamentos</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Dados para os gráficos -->
+<div id="chartData" class="d-none"
+     data-categories='{{ chart_categories|tojson }}'
+     data-amounts='{{ chart_amounts|tojson }}'
+     data-colors='{{ chart_colors|tojson }}'
+     data-daily-labels='{{ daily_labels|tojson }}'
+     data-daily-income='{{ daily_income|tojson }}'
+     data-daily-expenses='{{ daily_expenses|tojson }}'>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+<script>
+    // ================================
+    // CORES DINÂMICAS
+    // ================================
+    document.querySelectorAll('.transaction-icon').forEach(function(el) {
+        var color = el.getAttribute('data-color');
+        el.style.color = color;
+        el.style.backgroundColor = color + '20';
+    });
+
+    document.querySelectorAll('.budget-bar').forEach(function(el) {
+        var width = el.getAttribute('data-width');
+        var color = el.getAttribute('data-color');
+        el.style.width = width + '%';
+        el.style.backgroundColor = color;
+    });
+
+    // ================================
+    // DADOS DO SERVIDOR
+    // ================================
+    var dataEl = document.getElementById('chartData');
+    var chartCategories = JSON.parse(dataEl.dataset.categories);
+    var chartAmounts = JSON.parse(dataEl.dataset.amounts);
+    var chartColors = JSON.parse(dataEl.dataset.colors);
+    var dailyLabels = JSON.parse(dataEl.dataset.dailyLabels);
+    var dailyIncome = JSON.parse(dataEl.dataset.dailyIncome);
+    var dailyExpenses = JSON.parse(dataEl.dataset.dailyExpenses);
+
+    // ================================
+    // DETECTAR TEMA
+    // ================================
+    function getThemeColors() {
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        return {
+            text: isDark ? '#F1F5F9' : '#0F172A',
+            grid: isDark ? '#334155' : '#E2E8F0',
+            tooltipBg: isDark ? '#1E293B' : '#FFFFFF',
+            tooltipText: isDark ? '#F1F5F9' : '#0F172A'
+        };
+    }
+
+    // ================================
+    // GRÁFICO DOUGHNUT
+    // ================================
+    if (chartAmounts.length > 0) {
+        var ctx1 = document.getElementById('categoryChart').getContext('2d');
+        var themeColors = getThemeColors();
+
+        new Chart(ctx1, {
+            type: 'doughnut',
+            data: {
+                labels: chartCategories,
+                datasets: [{
+                    data: chartAmounts,
+                    backgroundColor: chartColors,
+                    borderWidth: 0,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: themeColors.text,
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyleWidth: 12,
+                            font: { size: 12, weight: 500 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: themeColors.tooltipBg,
+                        titleColor: themeColors.tooltipText,
+                        bodyColor: themeColors.tooltipText,
+                        borderColor: themeColors.grid,
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                var value = context.raw.toLocaleString('pt-BR', {
+                                    style: 'currency', currency: 'BRL'
+                                });
+                                var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                                var percent = ((context.raw / total) * 100).toFixed(1);
+                                return ' ' + value + ' (' + percent + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ================================
+    // GRÁFICO LINHA
+    // ================================
+    if (dailyLabels.length > 0) {
+        var ctx2 = document.getElementById('dailyChart').getContext('2d');
+        var themeColors2 = getThemeColors();
+
+        new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: dailyLabels,
+                datasets: [
+                    {
+                        label: 'Receitas',
+                        data: dailyIncome,
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#10B981'
+                    },
+                    {
+                        label: 'Despesas',
+                        data: dailyExpenses,
+                        borderColor: '#EF4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#EF4444'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: themeColors2.text,
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyleWidth: 12,
+                            font: { size: 12, weight: 500 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: themeColors2.tooltipBg,
+                        titleColor: themeColors2.tooltipText,
+                        bodyColor: themeColors2.tooltipText,
+                        borderColor: themeColors2.grid,
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                var value = context.raw.toLocaleString('pt-BR', {
+                                    style: 'currency', currency: 'BRL'
+                                });
+                                return ' ' + context.dataset.label + ': ' + value;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: themeColors2.grid, drawBorder: false },
+                        ticks: { color: themeColors2.text, font: { size: 11 } }
+                    },
+                    y: {
+                        grid: { color: themeColors2.grid, drawBorder: false },
+                        ticks: {
+                            color: themeColors2.text,
+                            font: { size: 11 },
+                            callback: function(value) {
+                                return 'R$ ' + value.toLocaleString('pt-BR');
+                            }
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    // ================================
+    // SELETOR DE MÊS
+    // ================================
+    function changeMonth(month) {
+        window.location.href = '/?month=' + month;
+    }
+
+    document.getElementById('prevMonth').addEventListener('click', function() {
+        var select = document.getElementById('monthSelect');
+        if (select.selectedIndex < select.options.length - 1) {
+            select.selectedIndex += 1;
+            changeMonth(select.value);
+        }
+    });
+
+    document.getElementById('nextMonth').addEventListener('click', function() {
+        var select = document.getElementById('monthSelect');
+        if (select.selectedIndex > 0) {
+            select.selectedIndex -= 1;
+            changeMonth(select.value);
+        }
+    });
+</script>
+{% endblock %}

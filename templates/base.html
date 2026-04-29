@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gerenc.ia{% endblock %}</title>
+
+    <!-- CSS Global -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
+
+    <!-- CSS específico da página -->
+    {% block styles %}{% endblock %}
+</head>
+<body>
+
+    <!-- ======================== -->
+    <!-- SIDEBAR (MENU LATERAL)  -->
+    <!-- ======================== -->
+    <aside class="sidebar" id="sidebar">
+        <!-- Logo -->
+       <div class="sidebar-logo">
+        <span class="logo-icon">💰</span>
+        <span class="logo-text">Gerenc.ia</span>
+</div>
+
+
+        <!-- Navegação -->
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="/transactions" class="nav-item {% if active_page == 'transactions' %}active{% endif %}">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Transações</span>
+            </a>
+            <a href="/categories" class="nav-item {% if active_page == 'categories' %}active{% endif %}">
+                <span class="nav-icon">🏷️</span>
+                <span class="nav-text">Categorias</span>
+            </a>
+            <a href="/budgets" class="nav-item {% if active_page == 'budgets' %}active{% endif %}">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-text">Orçamentos</span>
+            </a>
+            <a href="/settings" class="nav-item {% if active_page == 'settings' %}active{% endif %}">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-text">Configurações</span>
+            </a>
+        </nav>
+
+        <!-- Rodapé da sidebar -->
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">{{ user_name[0] if user_name else 'U' }}</div>
+                <div class="user-details">
+                    <span class="user-name">{{ user_name or 'Usuário' }}</span>
+                    <span class="user-email">{{ user_email or '' }}</span>
+                </div>
+            </div>
+            <a href="/logout" class="nav-item logout-btn">
+                <span class="nav-icon">🚪</span>
+                <span class="nav-text">Sair</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- ======================== -->
+    <!-- OVERLAY MOBILE           -->
+    <!-- ======================== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ======================== -->
+    <!-- CONTEÚDO PRINCIPAL       -->
+    <!-- ======================== -->
+    <main class="main-content">
+        <!-- Header do conteúdo -->
+        <header class="content-header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle">
+                    <span class="hamburger-icon">☰</span>
+                </button>
+                <div>
+                    <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+                    <p class="page-subtitle">{% block page_subtitle %}Visão geral das suas finanças{% endblock %}</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="theme-toggle" id="themeToggle" title="Alternar tema">
+                    <span class="theme-icon" id="themeIcon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Conteúdo da página -->
+        <div class="page-content">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- JS Global -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- JS específico da página -->
+    {% block scripts %}{% endblock %}
+
+</body>
+</html>

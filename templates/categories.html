@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Categorias - Gerenc.ia{% endblock %}
+
+{% block page_title %}Categorias{% endblock %}
+{% block page_subtitle %}Gerencie suas categorias de receita e despesa{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/categories.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- ======================== -->
+<!-- FLASH MESSAGES           -->
+<!-- ======================== -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container">
+    {% for category, message in messages %}
+    <div class="flash-message flash-{{ category }}">
+        <span>{% if category == 'success' %}✅{% else %}❌{% endif %} {{ message }}</span>
+        <button class="flash-close" onclick="this.parentElement.remove()" aria-label="Fechar">✕</button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- ======================== -->
+<!-- TOOLBAR                  -->
+<!-- ======================== -->
+<div class="toolbar">
+    <div class="toolbar-left">
+        <div class="filter-group">
+            <a href="/categories?type=all"
+               class="filter-btn {% if filter_type == 'all' %}active{% endif %}">
+                Todas
+            </a>
+            <a href="/categories?type=despesa"
+               class="filter-btn {% if filter_type == 'despesa' %}active{% endif %}">
+                🔴 Despesas
+            </a>
+            <a href="/categories?type=receita"
+               class="filter-btn {% if filter_type == 'receita' %}active{% endif %}">
+                🟢 Receitas
+            </a>
+        </div>
+    </div>
+    <div class="toolbar-right">
+        <button class="btn btn-primary" onclick="openCreateModal()">
+            <span>＋</span> Nova Categoria
+        </button>
+    </div>
+</div>
+
+<!-- ======================== -->
+<!-- LISTA DE CATEGORIAS      -->
+<!-- ======================== -->
+{% if categories %}
+<div class="categories-grid">
+    {% for cat in categories %}
+    <div class="category-card" data-color="{{ cat.color }}">
+        <div class="category-header">
+            <div class="category-icon" data-cat-color="{{ cat.color }}">
+                {{ cat.icon }}
+            </div>
+            <div class="category-info">
+                <h3 class="category-name">{{ cat.name }}</h3>
+                <span class="category-type type-{{ cat.type }}">
+                    {% if cat.type == 'despesa' %}🔴 Despesa{% else %}🟢 Receita{% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="category-footer">
+            <span class="category-transactions">
+                {% if cat.transaction_count == 1 %}
+                    1 transação
+                {% else %}
+                    {{ cat.transaction_count }} transações
+                {% endif %}
+            </span>
+            <div class="category-actions">
+                <button class="btn-icon btn-edit"
+                        data-id="{{ cat.id }}"
+                        onclick="openEditModal(this.dataset.id)"
+                        title="Editar"
+                        aria-label="Editar categoria">
+                    ✏️
+                </button>
+                <button class="btn-icon btn-delete"
+                        data-id="{{ cat.id }}"
+                        data-name="{{ cat.name }}"
+                        data-count="{{ cat.transaction_count }}"
+                        onclick="openDeleteModal(this.dataset.id, this.dataset.name, this.dataset.count)"
+                        title="Excluir"
+                        aria-label="Excluir categoria">
+                    🗑️
+                </button>
+            </div>
+        </div>
+       <div class="category-color-bar" {% if cat.color %}style="background-color: {{ cat.color }}"{% endif %}></div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <span class="empty-icon">🏷️</span>
+    <h3>Nenhuma categoria encontrada</h3>
+    <p>Crie sua primeira categoria para organizar suas finanças.</p>
+    <button class="btn btn-primary" onclick="openCreateModal()">
+        <span>＋</span> Nova Categoria
+    </button>
+</div>
+{% endif %}
+
+<!-- ======================== -->
+<!-- MODAL: CRIAR/EDITAR      -->
+<!-- ======================== -->
+<div class="modal-overlay" id="categoryModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">Nova Categoria</h2>
+            <button class="modal-close" onclick="closeModal()" aria-label="Fechar modal">✕</button>
+        </div>
+        <form id="categoryForm" method="POST" action="/categories/create">
+            <div class="modal-body">
+                <!-- Nome -->
+                <div class="form-group">
+                    <label for="catName">Nome</label>
+                    <input type="text" id="catName" name="name" placeholder="Ex: Alimentação" required maxlength="50">
+                </div>
+
+                <!-- Tipo -->
+                <div class="form-group">
+                    <label for="catType">Tipo</label>
+                    <select id="catType" name="type" required>
+                        <option value="despesa">🔴 Despesa</option>
+                        <option value="receita">🟢 Receita</option>
+                    </select>
+                </div>
+
+                <!-- Ícone -->
+                <div class="form-group">
+                    <label>Ícone</label>
+                    <div class="icon-picker" id="iconPicker">
+                        <button type="button" class="icon-option selected" data-icon="📁">📁</button>
+                        <button type="button" class="icon-option" data-icon="🍔">🍔</button>
+                        <button type="button" class="icon-option" data-icon="🚗">🚗</button>
+                        <button type="button" class="icon-option" data-icon="🏠">🏠</button>
+                        <button type="button" class="icon-option" data-icon="🏥">🏥</button>
+                        <button type="button" class="icon-option" data-icon="📚">📚</button>
+                        <button type="button" class="icon-option" data-icon="🎮">🎮</button>
+                        <button type="button" class="icon-option" data-icon="🛒">🛒</button>
+                        <button type="button" class="icon-option" data-icon="📄">📄</button>
+                        <button type="button" class="icon-option" data-icon="📦">📦</button>
+                        <button type="button" class="icon-option" data-icon="👕">👕</button>
+                        <button type="button" class="icon-option" data-icon="💊">💊</button>
+                        <button type="button" class="icon-option" data-icon="🐾">🐾</button>
+                        <button type="button" class="icon-option" data-icon="✈️">✈️</button>
+                        <button type="button" class="icon-option" data-icon="🎬">🎬</button>
+                        <button type="button" class="icon-option" data-icon="🎵">🎵</button>
+                        <button type="button" class="icon-option" data-icon="💰">💰</button>
+                        <button type="button" class="icon-option" data-icon="💻">💻</button>
+                        <button type="button" class="icon-option" data-icon="📈">📈</button>
+                        <button type="button" class="icon-option" data-icon="🏦">🏦</button>
+                        <button type="button" class="icon-option" data-icon="🎁">🎁</button>
+                        <button type="button" class="icon-option" data-icon="💵">💵</button>
+                        <button type="button" class="icon-option" data-icon="🏆">🏆</button>
+                        <button type="button" class="icon-option" data-icon="⭐">⭐</button>
+                    </div>
+                    <input type="hidden" id="catIcon" name="icon" value="📁">
+                </div>
+
+                <!-- Cor -->
+                <div class="form-group">
+                    <label>Cor</label>
+                    <div class="color-picker" id="colorPicker">
+                        <button type="button" class="color-option selected" data-color="#EF4444" style="background-color: #EF4444"></button>
+                        <button type="button" class="color-option" data-color="#F59E0B" style="background-color: #F59E0B"></button>
+                        <button type="button" class="color-option" data-color="#F97316" style="background-color: #F97316"></button>
+                        <button type="button" class="color-option" data-color="#10B981" style="background-color: #10B981"></button>
+                        <button type="button" class="color-option" data-color="#3B82F6" style="background-color: #3B82F6"></button>
+                        <button type="button" class="color-option" data-color="#6366F1" style="background-color: #6366F1"></button>
+                        <button type="button" class="color-option" data-color="#8B5CF6" style="background-color: #8B5CF6"></button>
+                        <button type="button" class="color-option" data-color="#EC4899" style="background-color: #EC4899"></button>
+                        <button type="button" class="color-option" data-color="#14B8A6" style="background-color: #14B8A6"></button>
+                        <button type="button" class="color-option" data-color="#6B7280" style="background-color: #6B7280"></button>
+                        <button type="button" class="color-option" data-color="#1D4ED8" style="background-color: #1D4ED8"></button>
+                        <button type="button" class="color-option" data-color="#DC2626" style="background-color: #DC2626"></button>
+                    </div>
+                    <input type="hidden" id="catColor" name="color" value="#EF4444">
+                </div>
+
+                <!-- Preview -->
+                <div class="form-group">
+                    <label>Prévia</label>
+                    <div class="category-preview" id="categoryPreview">
+                        <div class="preview-icon" id="previewIcon">📁</div>
+                        <div class="preview-info">
+                            <span class="preview-name" id="previewName">Nome da categoria</span>
+                            <span class="preview-type" id="previewType">🔴 Despesa</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="modalSubmitBtn">Criar Categoria</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ======================== -->
+<!-- MODAL: CONFIRMAR EXCLUSÃO -->
+<!-- ======================== -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h2 class="modal-title">Excluir Categoria</h2>
+            <button class="modal-close" onclick="closeDeleteModal()" aria-label="Fechar modal">✕</button>
+        </div>
+        <form id="deleteForm" method="POST" action="">
+            <div class="modal-body">
+                <div class="delete-warning">
+                    <span class="warning-icon">⚠️</span>
+                    <p>Tem certeza que deseja excluir a categoria <strong id="deleteCatName"></strong>?</p>
+                    <p class="warning-detail" id="deleteWarningDetail"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Excluir</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/categories.js') }}"></script>
+{% endblock %}

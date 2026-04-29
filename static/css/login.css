@@ -1,0 +1,420 @@
+/* ================================
+   AUTH — LAYOUT
+   ================================ */
+.auth-body {
+    min-height: 100vh;
+    display: flex;
+    background-color: var(--bg-primary);
+}
+
+.auth-container {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* ================================
+   BRANDING (LADO ESQUERDO)
+   ================================ */
+.auth-brand {
+    width: 45%;
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #6366F1 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-brand::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
+    animation: float 8s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(30px, -30px); }
+}
+
+.brand-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    color: #FFFFFF;
+}
+
+.brand-icon {
+    font-size: 64px;
+    display: block;
+    margin-bottom: 16px;
+}
+
+.brand-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 8px;
+}
+
+.brand-subtitle {
+    font-size: 1.125rem;
+    opacity: 0.9;
+    margin-bottom: 40px;
+}
+
+.brand-features {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    text-align: left;
+}
+
+.brand-feature {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.938rem;
+    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 12px 20px;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+/* ================================
+   FORMULÁRIO (LADO DIREITO)
+   ================================ */
+.auth-form-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px;
+    background-color: var(--bg-primary);
+}
+
+.auth-form-container {
+    width: 100%;
+    max-width: 420px;
+}
+
+.auth-header {
+    margin-bottom: 32px;
+}
+
+.auth-header h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.auth-header p {
+    font-size: 0.938rem;
+    color: var(--text-secondary);
+}
+
+/* ================================
+   ALERTAS FLASH
+   ================================ */
+.alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.alert-error {
+    background-color: #FEF2F2;
+    color: #DC2626;
+    border: 1px solid #FECACA;
+}
+
+.alert-success {
+    background-color: #F0FDF4;
+    color: #16A34A;
+    border: 1px solid #BBF7D0;
+}
+
+[data-theme="dark"] .alert-error {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #F87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+[data-theme="dark"] .alert-success {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* ================================
+   FORMULÁRIO
+   ================================ */
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.input-wrapper {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg-input);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0 16px;
+    transition: all 0.2s ease;
+}
+
+.input-wrapper:focus-within {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.input-icon {
+    font-size: 16px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.input-wrapper input {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 14px 0;
+    font-size: 0.938rem;
+    color: var(--text-primary);
+    outline: none;
+    font-family: inherit;
+}
+
+.input-wrapper input::placeholder {
+    color: var(--text-placeholder);
+}
+
+.toggle-password {
+    font-size: 16px;
+    padding: 4px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    background: none;
+    border: none;
+}
+
+.toggle-password:hover {
+    opacity: 1;
+}
+
+/* ================================
+   INDICADOR DE FORÇA DA SENHA
+   ================================ */
+.password-strength {
+    height: 4px;
+    background-color: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.strength-bar {
+    height: 100%;
+    width: 0%;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.strength-bar.weak {
+    width: 33%;
+    background-color: #EF4444;
+}
+
+.strength-bar.medium {
+    width: 66%;
+    background-color: #F59E0B;
+}
+
+.strength-bar.strong {
+    width: 100%;
+    background-color: #10B981;
+}
+
+/* ================================
+   MATCH DE SENHAS
+   ================================ */
+.password-match {
+    font-size: 0.75rem;
+    font-weight: 500;
+    min-height: 16px;
+    margin-top: 2px;
+}
+
+.password-match.match {
+    color: #10B981;
+}
+
+.password-match.no-match {
+    color: #EF4444;
+}
+
+/* ================================
+   BOTÃO PRIMÁRIO
+   ================================ */
+.btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #4F46E5, #6366F1);
+    color: #FFFFFF;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 4px;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #4338CA, #4F46E5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* ================================
+   FOOTER DO AUTH
+   ================================ */
+.auth-footer {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.auth-footer a {
+    color: var(--accent-primary);
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.auth-footer a:hover {
+    color: var(--accent-primary-hover);
+}
+
+/* ================================
+   NOTIFICAÇÃO GLOBAL
+   ================================ */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    z-index: 9999;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    box-shadow: var(--shadow-lg);
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+.notification-success {
+    background-color: #F0FDF4;
+    color: #16A34A;
+    border: 1px solid #BBF7D0;
+}
+
+.notification-error {
+    background-color: #FEF2F2;
+    color: #DC2626;
+    border: 1px solid #FECACA;
+}
+
+/* ================================
+   RESPONSIVO — TABLET
+   ================================ */
+@media (max-width: 1024px) {
+    .auth-brand {
+        width: 40%;
+        padding: 32px;
+    }
+
+    .brand-icon {
+        font-size: 48px;
+    }
+
+    .brand-title {
+        font-size: 2rem;
+    }
+}
+
+/* ================================
+   RESPONSIVO — MOBILE
+   ================================ */
+@media (max-width: 768px) {
+    .auth-container {
+        flex-direction: column;
+    }
+
+    .auth-brand {
+        width: 100%;
+        padding: 40px 24px;
+        min-height: auto;
+    }
+
+    .brand-features {
+        display: none;
+    }
+
+    .brand-subtitle {
+        margin-bottom: 0;
+    }
+
+    .auth-form-wrapper {
+        padding: 32px 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-form-wrapper {
+        padding: 24px 16px;
+    }
+
+    .auth-header h2 {
+        font-size: 1.5rem;
+    }
+}

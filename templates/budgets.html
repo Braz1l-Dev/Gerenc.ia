@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+
+{% block title %}Orçamentos - Gerenc.ia{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/budgets.css') }}">
+{% endblock %}
+
+{% block page_title %}Orçamentos{% endblock %}
+{% block page_subtitle %}Defina limites de gastos por categoria{% endblock %}
+
+{% block content %}
+
+<!-- Toolbar -->
+<div class="budgets-toolbar">
+    <div class="toolbar-left">
+        <select id="monthFilter" class="filter-select" onchange="applyFilter()">
+            {% for m in months_list %}
+                <option value="{{ m.value }}" {% if m.value == current_month %}selected{% endif %}>
+                    {{ m.label }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="toolbar-right">
+        <button class="btn-primary" onclick="openModal()">
+            <span class="btn-icon">+</span>
+            Novo Orçamento
+        </button>
+    </div>
+</div>
+
+<!-- Resumo Geral -->
+<div class="budget-overview">
+    <div class="overview-card">
+        <div class="overview-header">
+            <span class="overview-icon">🎯</span>
+            <h3>Resumo do Mês</h3>
+        </div>
+        <div class="overview-stats">
+            <div class="overview-stat">
+                <span class="stat-label">Total Orçado</span>
+                <span class="stat-value">R$ {{ "%.2f"|format(overview.total_budget) }}</span>
+            </div>
+            <div class="overview-stat">
+                <span class="stat-label">Total Gasto</span>
+                <span class="stat-value expense">R$ {{ "%.2f"|format(overview.total_spent) }}</span>
+            </div>
+            <div class="overview-stat">
+                <span class="stat-label">Disponível</span>
+                <span class="stat-value {% if overview.total_remaining >= 0 %}positive{% else %}negative{% endif %}">
+                    R$ {{ "%.2f"|format(overview.total_remaining) }}
+                </span>
+            </div>
+        </div>
+        <div class="overview-progress-container">
+            <div class="overview-progress-bar">
+                <div class="overview-progress-fill"
+                     data-percent="{{ overview.total_percent }}"
+                     data-color="{% if overview.total_percent > 100 %}#EF4444{% elif overview.total_percent > 80 %}#F59E0B{% else %}#6366F1{% endif %}">
+                </div>
+            </div>
+            <span class="overview-progress-label"
+                  data-color="{% if overview.total_percent > 100 %}#EF4444{% elif overview.total_percent > 80 %}#F59E0B{% else %}#6366F1{% endif %}">
+                {{ "%.0f"|format(overview.total_percent) }}% utilizado
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Grid de Orçamentos -->
+{% if budgets %}
+    <div class="budgets-grid">
+        {% for b in budgets %}
+            <div class="budget-card" data-border-color="{{ b.category_color or '#6366F1' }}">
+                <!-- Header -->
+                <div class="budget-card-header">
+                    <div class="budget-category-info">
+                        <div class="budget-category-icon" data-color="{{ b.category_color or '#6366F1' }}">
+                            {{ b.category_icon or '📦' }}
+                        </div>
+                        <div>
+                            <h3 class="budget-category-name">{{ b.category_name or 'Sem categoria' }}</h3>
+                            <span class="budget-period">{{ b.month_label }}</span>
+                        </div>
+                    </div>
+                    <div class="budget-actions">
+                        <button class="btn-action btn-edit"
+                                data-id="{{ b.id }}"
+                                data-amount="{{ b.amount }}"
+                                data-category="{{ b.category_id }}"
+                                data-month="{{ b.month }}"
+                                title="Editar">
+                            ✏️
+                        </button>
+                        <button class="btn-action btn-delete"
+                                data-id="{{ b.id }}"
+                                data-name="{{ b.category_name or 'Sem categoria' }}"
+                                title="Excluir">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Valores -->
+                <div class="budget-values">
+                    <div class="budget-value-row">
+                        <span class="budget-value-label">Orçado</span>
+                        <span class="budget-value-amount">R$ {{ "%.2f"|format(b.amount) }}</span>
+                    </div>
+                    <div class="budget-value-row">
+                        <span class="budget-value-label">Gasto</span>
+                        <span class="budget-value-amount expense">R$ {{ "%.2f"|format(b.spent) }}</span>
+                    </div>
+                    <div class="budget-value-row">
+                        <span class="budget-value-label">Restante</span>
+                        <span class="budget-value-amount {% if b.remaining >= 0 %}positive{% else %}negative{% endif %}">
+                            R$ {{ "%.2f"|format(b.remaining) }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Barra de Progresso -->
+                <div class="budget-progress-container">
+                    <div class="budget-progress-bar">
+                        <div class="budget-progress-fill"
+                             data-percent="{{ b.percent }}"
+                             data-color="{% if b.percent > 100 %}#EF4444{% elif b.percent > 80 %}#F59E0B{% else %}{{ b.category_color or '#6366F1' }}{% endif %}">
+                        </div>
+                    </div>
+                    <div class="budget-progress-info">
+                        <span class="budget-progress-percent"
+                              data-color="{% if b.percent > 100 %}#EF4444{% elif b.percent > 80 %}#F59E0B{% else %}{{ b.category_color or '#6366F1' }}{% endif %}">
+                            {{ "%.0f"|format(b.percent) }}%
+                        </span>
+                        {% if b.percent > 100 %}
+                            <span class="budget-alert">⚠️ Estourado!</span>
+                        {% elif b.percent > 80 %}
+                            <span class="budget-warning">⚡ Atenção</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <span class="empty-icon">🎯</span>
+        <h3>Nenhum orçamento definido</h3>
+        <p>Crie orçamentos para controlar seus gastos por categoria</p>
+        <button class="btn-primary" onclick="openModal()">
+            <span class="btn-icon">+</span>
+            Novo Orçamento
+        </button>
+    </div>
+{% endif %}
+
+<!-- Modal Novo/Editar Orçamento -->
+<div class="modal-overlay" id="budgetModal">
+    <div class="modal-container modal-sm">
+        <div class="modal-header">
+            <h2 id="modalTitle">Novo Orçamento</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <form id="budgetForm" method="POST">
+            <input type="hidden" name="budget_id" id="budgetId">
+            <div class="modal-body">
+                <!-- Categoria -->
+                <div class="form-group">
+                    <label class="form-label" for="category_id">Categoria</label>
+                    <select id="category_id" name="category_id" class="form-input" required>
+                        <option value="">Selecione uma categoria</option>
+                        {% for c in categories %}
+                            <option value="{{ c.id }}">{{ c.icon }} {{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Valor -->
+                <div class="form-group">
+                    <label class="form-label" for="amount">Limite (R$)</label>
+                    <input type="number" id="amount" name="amount" class="form-input"
+                           placeholder="0,00" step="0.01" min="0.01" required>
+                </div>
+
+                <!-- Mês -->
+                <div class="form-group">
+                    <label class="form-label" for="month">Mês</label>
+                    <input type="month" id="month" name="month" class="form-input" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    <span class="btn-icon">💾</span>
+                    Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Confirmar Exclusão -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal-container modal-sm">
+        <div class="modal-header">
+            <h2>Confirmar Exclusão</h2>
+            <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="delete-warning">
+                <span class="delete-icon">⚠️</span>
+                <p>Tem certeza que deseja excluir o orçamento de <strong id="deleteBudgetName"></strong>?</p>
+                <p class="delete-note">Esta ação não pode ser desfeita.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+            <form id="deleteForm" method="POST" style="display: inline;">
+                <button type="submit" class="btn-danger">🗑️ Excluir</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // ================================
+    // CORES DINÂMICAS
+    // ================================
+    document.querySelectorAll('.budget-category-icon').forEach(function(el) {
+        var color = el.getAttribute('data-color');
+        el.style.color = color;
+        el.style.backgroundColor = color + '20';
+    });
+
+    document.querySelectorAll('.budget-card').forEach(function(el) {
+        var color = el.getAttribute('data-border-color');
+        el.style.borderTopColor = color;
+    });
+
+    document.querySelectorAll('.budget-progress-fill').forEach(function(el) {
+        var percent = Math.min(parseFloat(el.getAttribute('data-percent')), 100);
+        var color = el.getAttribute('data-color');
+        el.style.width = percent + '%';
+        el.style.backgroundColor = color;
+    });
+
+    document.querySelectorAll('.overview-progress-fill').forEach(function(el) {
+        var percent = Math.min(parseFloat(el.getAttribute('data-percent')), 100);
+        var color = el.getAttribute('data-color');
+        el.style.width = percent + '%';
+        el.style.backgroundColor = color;
+    });
+
+    document.querySelectorAll('.budget-progress-percent').forEach(function(el) {
+        var color = el.getAttribute('data-color');
+        el.style.color = color;
+    });
+
+    document.querySelectorAll('.overview-progress-label').forEach(function(el) {
+        var color = el.getAttribute('data-color');
+        el.style.color = color;
+    });
+
+    // ================================
+    // FILTRO DE MÊS
+    // ================================
+    function applyFilter() {
+        var month = document.getElementById('monthFilter').value;
+        window.location.href = '/budgets?month=' + month;
+    }
+
+    // ================================
+    // BOTÕES EDITAR
+    // ================================
+    document.querySelectorAll('.btn-edit').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.getAttribute('data-id');
+            var amount = this.getAttribute('data-amount');
+            var categoryId = this.getAttribute('data-category');
+            var month = this.getAttribute('data-month');
+
+            document.getElementById('modalTitle').textContent = 'Editar Orçamento';
+            document.getElementById('budgetId').value = id;
+            document.getElementById('amount').value = amount;
+            document.getElementById('category_id').value = categoryId;
+            document.getElementById('month').value = month;
+            document.getElementById('budgetForm').action = '/budgets/edit/' + id;
+            document.getElementById('submitBtn').innerHTML = '<span class="btn-icon">💾</span> Atualizar';
+
+            document.getElementById('budgetModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+    });
+
+    // ================================
+    // BOTÕES EXCLUIR
+    // ================================
+    document.querySelectorAll('.btn-delete').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.getAttribute('data-id');
+            var name = this.getAttribute('data-name');
+
+            document.getElementById('deleteBudgetName').textContent = name;
+            document.getElementById('deleteForm').action = '/budgets/delete/' + id;
+            document.getElementById('deleteModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+    });
+
+    // ================================
+    // MODAL NOVO ORÇAMENTO
+    // ================================
+    function openModal() {
+        document.getElementById('modalTitle').textContent = 'Novo Orçamento';
+        document.getElementById('budgetForm').reset();
+        document.getElementById('budgetId').value = '';
+        document.getElementById('budgetForm').action = '/budgets/add';
+        document.getElementById('submitBtn').innerHTML = '<span class="btn-icon">💾</span> Salvar';
+
+        // Mês padrão: mês atual do filtro
+        var currentMonth = document.getElementById('monthFilter').value;
+        document.getElementById('month').value = currentMonth;
+
+        document.getElementById('budgetModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        document.getElementById('budgetModal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // Fechar modais ao clicar fora
+    document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+    });
+
+    // Fechar modais com ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+            closeDeleteModal();
+        }
+    });
+</script>
+{% endblock %}
