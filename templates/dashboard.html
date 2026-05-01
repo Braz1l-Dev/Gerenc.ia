@@ -2,428 +2,318 @@
 
 {% block title %}Dashboard - Gerenc.ia{% endblock %}
 
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Visão geral das suas finanças{% endblock %}
+
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 {% endblock %}
 
-{% block page_title %}Dashboard{% endblock %}
-{% block page_subtitle %}Visão geral das suas finanças{% endblock %}
-
 {% block content %}
 
-<!-- Seletor de Mês -->
-<div class="month-selector">
-    <button class="month-nav" id="prevMonth" title="Mês anterior">◀</button>
-    <select id="monthSelect" class="month-select" onchange="changeMonth(this.value)">
-        {% for m in months_list %}
-            <option value="{{ m.value }}" {% if m.value == month %}selected{% endif %}>
-                {{ m.label }}
-            </option>
-        {% endfor %}
-    </select>
-    <button class="month-nav" id="nextMonth" title="Próximo mês">▶</button>
-</div>
-
-<!-- Cards de Resumo -->
-<div class="summary-cards">
-    <div class="summary-card card-balance">
-        <div class="card-icon-wrapper balance-icon">
-            <span>💰</span>
-        </div>
+<!-- ===== CARDS RESUMO ===== -->
+<div class="cards-grid">
+    <div class="summary-card card-entradas">
+        <div class="card-icon">💰</div>
         <div class="card-info">
-            <span class="card-label">Saldo do mês</span>
-            <span class="card-value {% if summary.balance >= 0 %}positive{% else %}negative{% endif %}">
-                R$ {{ "%.2f"|format(summary.balance) }}
-            </span>
+            <span class="card-label">Total Entradas</span>
+            <span class="card-value" id="totalEntradas">R$ 0,00</span>
         </div>
     </div>
-
-    <div class="summary-card card-income">
-        <div class="card-icon-wrapper income-icon">
-            <span>📈</span>
-        </div>
+    <div class="summary-card card-saidas">
+        <div class="card-icon">💸</div>
         <div class="card-info">
-            <span class="card-label">Receitas</span>
-            <span class="card-value positive">
-                R$ {{ "%.2f"|format(summary.income) }}
-            </span>
+            <span class="card-label">Total Saídas</span>
+            <span class="card-value" id="totalSaidas">R$ 0,00</span>
         </div>
     </div>
-
-    <div class="summary-card card-expenses">
-        <div class="card-icon-wrapper expenses-icon">
-            <span>📉</span>
-        </div>
+    <div class="summary-card card-saldo" id="cardSaldo">
+        <div class="card-icon">📈</div>
         <div class="card-info">
-            <span class="card-label">Despesas</span>
-            <span class="card-value negative">
-                R$ {{ "%.2f"|format(summary.expenses) }}
-            </span>
-        </div>
-    </div>
-
-    <div class="summary-card card-budgets">
-        <div class="card-icon-wrapper budgets-icon">
-            <span>🎯</span>
-        </div>
-        <div class="card-info">
-            <span class="card-label">Orçamentos definidos</span>
-            <span class="card-value">{{ budgets_data|length }}</span>
+            <span class="card-label">Saldo</span>
+            <span class="card-value" id="saldo">R$ 0,00</span>
         </div>
     </div>
 </div>
 
-<!-- Gráficos -->
+<!-- ===== GRÁFICOS LINHA 1 ===== -->
 <div class="charts-row">
-    <div class="chart-card">
+    <div class="chart-box chart-large">
         <div class="chart-header">
-            <h3>Despesas por Categoria</h3>
+            <h3>📈 Entradas vs Saídas — Mensal</h3>
+            <span class="chart-badge" id="badgeAno"></span>
         </div>
         <div class="chart-body">
-            {% if chart_amounts %}
-                <canvas id="categoryChart"></canvas>
-            {% else %}
-                <div class="chart-empty">
-                    <span class="empty-icon">📊</span>
-                    <p>Nenhuma despesa registrada neste mês</p>
-                </div>
-            {% endif %}
+            <canvas id="graficoEntradasSaidas"></canvas>
         </div>
     </div>
-
-    <div class="chart-card">
+    <div class="chart-box chart-small">
         <div class="chart-header">
-            <h3>Fluxo Diário</h3>
+            <h3>🍕 Gastos por Categoria</h3>
         </div>
-        <div class="chart-body">
-            {% if daily_labels %}
-                <canvas id="dailyChart"></canvas>
-            {% else %}
-                <div class="chart-empty">
-                    <span class="empty-icon">📈</span>
-                    <p>Nenhuma transação registrada neste mês</p>
-                </div>
-            {% endif %}
+        <div class="chart-body chart-body-center">
+            <canvas id="graficoCategorias"></canvas>
+            <p id="semCategorias" class="empty-message hidden">
+                Nenhuma despesa registrada ainda.
+            </p>
         </div>
     </div>
 </div>
 
-<!-- Linha inferior -->
-<div class="bottom-row">
-    <!-- Últimas Transações -->
-    <div class="section-card">
-        <div class="section-header">
-            <h3>Últimas Transações</h3>
-            <a href="/transactions?month={{ month }}" class="section-link">Ver todas →</a>
+<!-- ===== GRÁFICO ORÇAMENTOS ===== -->
+<div class="charts-row">
+    <div class="chart-box chart-full">
+        <div class="chart-header">
+            <h3>🎯 Orçamentos: Planejado vs Gasto</h3>
+            <span class="chart-badge" id="badgeMes"></span>
         </div>
-        <div class="section-body">
-            {% if recent_transactions %}
-                <div class="transactions-list">
-                    {% for t in recent_transactions %}
-                        <div class="transaction-item">
-                            <div class="transaction-left">
-                                <div class="transaction-icon" data-color="{{ t.category_color or '#6B7280' }}">
-                                    {{ t.category_icon or '📦' }}
-                                </div>
-                                <div class="transaction-info">
-                                    <span class="transaction-desc">{{ t.description }}</span>
-                                    <span class="transaction-category">{{ t.category_name or 'Sem categoria' }}</span>
-                                </div>
-                            </div>
-                            <div class="transaction-right">
-                                <span class="transaction-amount {% if t.type == 'receita' %}income{% else %}expense{% endif %}">
-                                    {% if t.type == 'receita' %}+{% else %}-{% endif %} R$ {{ "%.2f"|format(t.amount) }}
-                                </span>
-                                <span class="transaction-date">
-                                    {{ t.date[8:10] }}/{{ t.date[5:7] }}
-                                </span>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="section-empty">
-                    <span class="empty-icon">💳</span>
-                    <p>Nenhuma transação neste mês</p>
-                    <a href="/transactions" class="btn-add-small">+ Adicionar transação</a>
-                </div>
-            {% endif %}
+        <div class="chart-body">
+            <canvas id="graficoOrcamentos"></canvas>
+            <p id="semOrcamentos" class="empty-message hidden">
+                Nenhum orçamento cadastrado para este mês.
+            </p>
         </div>
     </div>
-
-    <!-- Orçamentos -->
-    <div class="section-card">
-        <div class="section-header">
-            <h3>Orçamentos</h3>
-            <a href="/budgets?month={{ month }}" class="section-link">Gerenciar →</a>
-        </div>
-        <div class="section-body">
-            {% if budgets_data %}
-                <div class="budgets-list">
-                    {% for b in budgets_data %}
-                        <div class="budget-item">
-                            <div class="budget-top">
-                                <div class="budget-left">
-                                    <span class="budget-icon">{{ b.category_icon }}</span>
-                                    <span class="budget-name">{{ b.category_name }}</span>
-                                </div>
-                                <div class="budget-right">
-                                    <span class="budget-spent {% if b.over_budget %}over{% endif %}">
-                                        R$ {{ "%.2f"|format(b.spent) }}
-                                    </span>
-                                    <span class="budget-separator">/</span>
-                                    <span class="budget-total">R$ {{ "%.2f"|format(b.budget_amount) }}</span>
-                                </div>
-                            </div>
-                            <div class="budget-bar-wrapper">
-                                <div class="budget-bar"
-                                     data-width="{{ b.percentage }}"
-                                     data-color="{% if b.over_budget %}#EF4444{% else %}{{ b.category_color }}{% endif %}">
-                                </div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="section-empty">
-                    <span class="empty-icon">🎯</span>
-                    <p>Nenhum orçamento definido</p>
-                    <a href="/budgets" class="btn-add-small">+ Definir orçamentos</a>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-<!-- Dados para os gráficos -->
-<div id="chartData" class="d-none"
-     data-categories='{{ chart_categories|tojson }}'
-     data-amounts='{{ chart_amounts|tojson }}'
-     data-colors='{{ chart_colors|tojson }}'
-     data-daily-labels='{{ daily_labels|tojson }}'
-     data-daily-income='{{ daily_income|tojson }}'
-     data-daily-expenses='{{ daily_expenses|tojson }}'>
 </div>
 
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <script>
-    // ================================
-    // CORES DINÂMICAS
-    // ================================
-    document.querySelectorAll('.transaction-icon').forEach(function(el) {
-        var color = el.getAttribute('data-color');
-        el.style.color = color;
-        el.style.backgroundColor = color + '20';
-    });
-
-    document.querySelectorAll('.budget-bar').forEach(function(el) {
-        var width = el.getAttribute('data-width');
-        var color = el.getAttribute('data-color');
-        el.style.width = width + '%';
-        el.style.backgroundColor = color;
-    });
-
-    // ================================
-    // DADOS DO SERVIDOR
-    // ================================
-    var dataEl = document.getElementById('chartData');
-    var chartCategories = JSON.parse(dataEl.dataset.categories);
-    var chartAmounts = JSON.parse(dataEl.dataset.amounts);
-    var chartColors = JSON.parse(dataEl.dataset.colors);
-    var dailyLabels = JSON.parse(dataEl.dataset.dailyLabels);
-    var dailyIncome = JSON.parse(dataEl.dataset.dailyIncome);
-    var dailyExpenses = JSON.parse(dataEl.dataset.dailyExpenses);
-
-    // ================================
-    // DETECTAR TEMA
-    // ================================
-    function getThemeColors() {
-        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        return {
-            text: isDark ? '#F1F5F9' : '#0F172A',
-            grid: isDark ? '#334155' : '#E2E8F0',
-            tooltipBg: isDark ? '#1E293B' : '#FFFFFF',
-            tooltipText: isDark ? '#F1F5F9' : '#0F172A'
-        };
+    function formatarReal(valor) {
+        return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    // ================================
-    // GRÁFICO DOUGHNUT
-    // ================================
-    if (chartAmounts.length > 0) {
-        var ctx1 = document.getElementById('categoryChart').getContext('2d');
-        var themeColors = getThemeColors();
+    const nomesMeses = [
+        'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+        'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'
+    ];
 
-        new Chart(ctx1, {
-            type: 'doughnut',
-            data: {
-                labels: chartCategories,
-                datasets: [{
-                    data: chartAmounts,
-                    backgroundColor: chartColors,
-                    borderWidth: 0,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '65%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: themeColors.text,
-                            padding: 16,
-                            usePointStyle: true,
-                            pointStyleWidth: 12,
-                            font: { size: 12, weight: 500 }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: themeColors.tooltipBg,
-                        titleColor: themeColors.tooltipText,
-                        bodyColor: themeColors.tooltipText,
-                        borderColor: themeColors.grid,
-                        borderWidth: 1,
-                        cornerRadius: 8,
-                        padding: 12,
-                        callbacks: {
-                            label: function(context) {
-                                var value = context.raw.toLocaleString('pt-BR', {
-                                    style: 'currency', currency: 'BRL'
-                                });
-                                var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
-                                var percent = ((context.raw / total) * 100).toFixed(1);
-                                return ' ' + value + ' (' + percent + '%)';
-                            }
-                        }
-                    }
-                }
+    const coresFallback = [
+        '#EF4444','#F59E0B','#3B82F6','#10B981','#8B5CF6',
+        '#EC4899','#F97316','#6366F1','#14B8A6','#6B7280'
+    ];
+
+    // Detectar tema
+    function getTheme() {
+        return document.documentElement.getAttribute('data-theme') || 'light';
+    }
+    function getGridColor() {
+        return getTheme() === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+    }
+    function getTextColor() {
+        return getTheme() === 'dark' ? '#CBD5E1' : '#64748B';
+    }
+
+    fetch('/api/dashboard/resumo')
+        .then(res => res.json())
+        .then(data => {
+            const anoAtual = new Date().getFullYear();
+            const mesAtual = new Date().getMonth();
+            document.getElementById('badgeAno').textContent = anoAtual;
+            document.getElementById('badgeMes').textContent = nomesMeses[mesAtual] + ' / ' + anoAtual;
+
+            // === CARDS ===
+            const totalEntradas = data.entradas.reduce((a, b) => a + b, 0);
+            const totalSaidas = data.saidas.reduce((a, b) => a + b, 0);
+            const saldo = totalEntradas - totalSaidas;
+
+            document.getElementById('totalEntradas').textContent = formatarReal(totalEntradas);
+            document.getElementById('totalSaidas').textContent = formatarReal(totalSaidas);
+            document.getElementById('saldo').textContent = formatarReal(saldo);
+
+            if (saldo < 0) {
+                document.getElementById('cardSaldo').classList.add('card-negativo');
             }
-        });
-    }
 
-    // ================================
-    // GRÁFICO LINHA
-    // ================================
-    if (dailyLabels.length > 0) {
-        var ctx2 = document.getElementById('dailyChart').getContext('2d');
-        var themeColors2 = getThemeColors();
+            // === GRÁFICO BARRAS ===
+            const labelsAbreviados = data.meses.map((m, i) => nomesMeses[i].substring(0, 3));
 
-        new Chart(ctx2, {
-            type: 'line',
-            data: {
-                labels: dailyLabels,
-                datasets: [
-                    {
-                        label: 'Receitas',
-                        data: dailyIncome,
-                        borderColor: '#10B981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        pointBackgroundColor: '#10B981'
-                    },
-                    {
-                        label: 'Despesas',
-                        data: dailyExpenses,
-                        borderColor: '#EF4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        pointBackgroundColor: '#EF4444'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
+            new Chart(document.getElementById('graficoEntradasSaidas'), {
+                type: 'bar',
+                data: {
+                    labels: labelsAbreviados,
+                    datasets: [
+                        {
+                            label: 'Entradas',
+                            data: data.entradas,
+                            backgroundColor: 'rgba(16, 185, 129, 0.75)',
+                            borderColor: '#10B981',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Saídas',
+                            data: data.saidas,
+                            backgroundColor: 'rgba(239, 68, 68, 0.75)',
+                            borderColor: '#EF4444',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }
+                    ]
                 },
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: themeColors2.text,
-                            padding: 16,
-                            usePointStyle: true,
-                            pointStyleWidth: 12,
-                            font: { size: 12, weight: 500 }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: v => formatarReal(v),
+                                color: getTextColor(),
+                                font: { size: 11 }
+                            },
+                            grid: { color: getGridColor() }
+                        },
+                        x: {
+                            ticks: { color: getTextColor(), font: { size: 11 } },
+                            grid: { display: false }
                         }
                     },
-                    tooltip: {
-                        backgroundColor: themeColors2.tooltipBg,
-                        titleColor: themeColors2.tooltipText,
-                        bodyColor: themeColors2.tooltipText,
-                        borderColor: themeColors2.grid,
-                        borderWidth: 1,
-                        cornerRadius: 8,
-                        padding: 12,
-                        callbacks: {
-                            label: function(context) {
-                                var value = context.raw.toLocaleString('pt-BR', {
-                                    style: 'currency', currency: 'BRL'
-                                });
-                                return ' ' + context.dataset.label + ': ' + value;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: { color: themeColors2.grid, drawBorder: false },
-                        ticks: { color: themeColors2.text, font: { size: 11 } }
-                    },
-                    y: {
-                        grid: { color: themeColors2.grid, drawBorder: false },
-                        ticks: {
-                            color: themeColors2.text,
-                            font: { size: 11 },
-                            callback: function(value) {
-                                return 'R$ ' + value.toLocaleString('pt-BR');
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${formatarReal(ctx.raw)}`
                             }
                         },
-                        beginAtZero: true
+                        legend: {
+                            position: 'top',
+                            labels: { color: getTextColor(), usePointStyle: true, padding: 16 }
+                        }
                     }
                 }
+            });
+
+            // === GRÁFICO DONUT ===
+            if (data.categorias.length > 0) {
+                const cores = data.cores_categoria.length > 0
+                    ? data.cores_categoria
+                    : coresFallback.slice(0, data.categorias.length);
+
+                new Chart(document.getElementById('graficoCategorias'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.categorias,
+                        datasets: [{
+                            data: data.valores_categoria,
+                            backgroundColor: cores,
+                            borderWidth: 2,
+                            borderColor: getTheme() === 'dark' ? '#1E293B' : '#FFFFFF'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '60%',
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => `${ctx.label}: ${formatarReal(ctx.raw)}`
+                                }
+                            },
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: getTextColor(),
+                                    boxWidth: 12,
+                                    padding: 10,
+                                    font: { size: 11 }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                document.getElementById('graficoCategorias').style.display = 'none';
+                document.getElementById('semCategorias').classList.remove('hidden');
             }
+
+            // === GRÁFICO ORÇAMENTOS ===
+            if (data.orc_labels.length > 0) {
+                new Chart(document.getElementById('graficoOrcamentos'), {
+                    type: 'bar',
+                    data: {
+                        labels: data.orc_labels,
+                        datasets: [
+                            {
+                                label: 'Planejado',
+                                data: data.orc_planejado,
+                                backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                                borderColor: '#3B82F6',
+                                borderWidth: 1,
+                                borderRadius: 6
+                            },
+                            {
+                                label: 'Gasto',
+                                data: data.orc_gasto,
+                                backgroundColor: data.orc_gasto.map((g, i) =>
+                                    g > data.orc_planejado[i]
+                                        ? 'rgba(239, 68, 68, 0.75)'
+                                        : 'rgba(16, 185, 129, 0.75)'
+                                ),
+                                borderColor: data.orc_gasto.map((g, i) =>
+                                    g > data.orc_planejado[i] ? '#EF4444' : '#10B981'
+                                ),
+                                borderWidth: 1,
+                                borderRadius: 6
+                            }
+                        ]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: v => formatarReal(v),
+                                    color: getTextColor(),
+                                    font: { size: 11 }
+                                },
+                                grid: { color: getGridColor() }
+                            },
+                            y: {
+                                ticks: { color: getTextColor(), font: { size: 12 } },
+                                grid: { display: false }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => {
+                                        const label = ctx.dataset.label;
+                                        const val = formatarReal(ctx.raw);
+                                        if (label === 'Gasto') {
+                                            const idx = ctx.dataIndex;
+                                            const planejado = data.orc_planejado[idx];
+                                            const pct = planejado > 0
+                                                ? ((ctx.raw / planejado) * 100).toFixed(1)
+                                                : 0;
+                                            return `${label}: ${val} (${pct}%)`;
+                                        }
+                                        return `${label}: ${val}`;
+                                    }
+                                }
+                            },
+                            legend: {
+                                position: 'top',
+                                labels: { color: getTextColor(), usePointStyle: true, padding: 16 }
+                            }
+                        }
+                    }
+                });
+            } else {
+                document.getElementById('graficoOrcamentos').style.display = 'none';
+                document.getElementById('semOrcamentos').classList.remove('hidden');
+            }
+        })
+        .catch(err => {
+            console.error('Erro ao carregar dashboard:', err);
         });
-    }
-
-    // ================================
-    // SELETOR DE MÊS
-    // ================================
-    function changeMonth(month) {
-        window.location.href = '/?month=' + month;
-    }
-
-    document.getElementById('prevMonth').addEventListener('click', function() {
-        var select = document.getElementById('monthSelect');
-        if (select.selectedIndex < select.options.length - 1) {
-            select.selectedIndex += 1;
-            changeMonth(select.value);
-        }
-    });
-
-    document.getElementById('nextMonth').addEventListener('click', function() {
-        var select = document.getElementById('monthSelect');
-        if (select.selectedIndex > 0) {
-            select.selectedIndex -= 1;
-            changeMonth(select.value);
-        }
-    });
 </script>
 {% endblock %}

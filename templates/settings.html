@@ -10,11 +10,368 @@
 {% block page_subtitle %}Personalize sua experiência{% endblock %}
 
 {% block content %}
-<div class="dashboard-placeholder">
-    <div class="placeholder-card">
-        <span class="placeholder-icon">🚧</span>
-        <h2>Configurações em construção</h2>
-        <p>Esta página será implementada na Etapa 8</p>
+
+<!-- ===== FLASH MESSAGES ===== -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flash-container">
+    {% for category, message in messages %}
+    <div class="flash-msg flash-{{ category }}">
+        <span>{{ '✅' if category == 'success' else '⚠️' }} {{ message }}</span>
+        <button class="flash-close" onclick="this.parentElement.remove()">✕</button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="settings-grid">
+
+    <!-- ============================= -->
+    <!-- SEÇÃO: PERFIL                 -->
+    <!-- ============================= -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <span class="settings-card-icon">👤</span>
+            <div>
+                <h3>Perfil</h3>
+                <p>Atualize seu nome e e-mail</p>
+            </div>
+        </div>
+        <form action="/settings/profile" method="POST" class="settings-form">
+            <div class="form-group">
+                <label for="name">Nome</label>
+                <input type="text" id="name" name="name" value="{{ user.name if user else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" value="{{ user.email if user else '' }}" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar alterações</button>
+        </form>
+    </div>
+
+    <!-- ============================= -->
+    <!-- SEÇÃO: ALTERAR SENHA          -->
+    <!-- ============================= -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <span class="settings-card-icon">🔒</span>
+            <div>
+                <h3>Alterar Senha</h3>
+                <p>Mantenha sua conta segura</p>
+            </div>
+        </div>
+        <form action="/settings/password" method="POST" class="settings-form">
+            <div class="form-group">
+                <label for="current_password">Senha atual</label>
+                <input type="password" id="current_password" name="current_password" required>
+            </div>
+            <div class="form-group">
+                <label for="new_password">Nova senha</label>
+                <input type="password" id="new_password" name="new_password" required minlength="4">
+            </div>
+            <div class="form-group">
+                <label for="confirm_password">Confirmar nova senha</label>
+                <input type="password" id="confirm_password" name="confirm_password" required minlength="4">
+            </div>
+            <button type="submit" class="btn btn-primary">Alterar senha</button>
+        </form>
+    </div>
+
+    <!-- ============================= -->
+    <!-- SEÇÃO: PREFERÊNCIAS           -->
+    <!-- ============================= -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <span class="settings-card-icon">🎨</span>
+            <div>
+                <h3>Preferências</h3>
+                <p>Moeda e aparência</p>
+            </div>
+        </div>
+        <form action="/settings/preferences" method="POST" class="settings-form">
+            <div class="form-group">
+                <label for="currency">Moeda</label>
+                <select id="currency" name="currency">
+                    <option value="BRL" {{ 'selected' if user and user.currency == 'BRL' else '' }}>🇧🇷 Real (R$)</option>
+                    <option value="USD" {{ 'selected' if user and user.currency == 'USD' else '' }}>🇺🇸 Dólar ($)</option>
+                    <option value="EUR" {{ 'selected' if user and user.currency == 'EUR' else '' }}>🇪🇺 Euro (€)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="theme">Tema</label>
+                <select id="theme" name="theme">
+                    <option value="light" {{ 'selected' if user and user.theme == 'light' else '' }}>☀️ Claro</option>
+                    <option value="dark" {{ 'selected' if user and user.theme == 'dark' else '' }}>🌙 Escuro</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar preferências</button>
+        </form>
+    </div>
+
+    <!-- ============================= -->
+    <!-- SEÇÃO: CONTAS FINANCEIRAS     -->
+    <!-- ============================= -->
+    <div class="settings-card card-wide">
+        <div class="settings-card-header">
+            <span class="settings-card-icon">🏦</span>
+            <div>
+                <h3>Contas Financeiras</h3>
+                <p>Gerencie suas contas, cartões e carteiras</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modalAddAccount')">+ Nova Conta</button>
+        </div>
+
+        {% if accounts and accounts|length > 0 %}
+        <div class="accounts-list">
+            {% for acc in accounts %}
+            <div class="account-item" data-color="{{ acc.color }}">
+                <div class="account-info">
+                    <span class="account-icon">{{ acc.icon }}</span>
+                    <div>
+                        <strong>{{ acc.name }}</strong>
+                        <span class="account-type-badge">{{ acc.type }}</span>
+                    </div>
+                </div>
+                <div class="account-balance">
+                    R$ {{ "%.2f"|format(acc.balance) }}
+                </div>
+                <div class="account-actions">
+                    <button class="btn-icon btn-edit" title="Editar"
+                        data-id="{{ acc.id }}"
+                        data-name="{{ acc.name }}"
+                        data-type="{{ acc.type }}"
+                        data-balance="{{ acc.balance }}"
+                        data-icon="{{ acc.icon }}"
+                        data-color="{{ acc.color }}"
+                        onclick="openEditFromButton(this)">
+                        ✏️
+                    </button>
+                    <form action="/settings/accounts/{{ acc.id }}/delete" method="POST" class="inline-form">
+                        <button type="submit" class="btn-icon btn-delete" title="Excluir"
+                            onclick="return confirm('Excluir esta conta?')">
+                            🗑️
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <span class="empty-icon">🏦</span>
+            <p>Nenhuma conta cadastrada ainda.</p>
+            <p class="empty-hint">Crie sua primeira conta clicando em "+ Nova Conta"</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ============================= -->
+    <!-- SEÇÃO: ZONA DE PERIGO         -->
+    <!-- ============================= -->
+    <div class="settings-card card-wide card-danger">
+        <div class="settings-card-header">
+            <span class="settings-card-icon">⚠️</span>
+            <div>
+                <h3>Zona de Perigo</h3>
+                <p>Ações irreversíveis</p>
+            </div>
+        </div>
+        <div class="danger-content">
+            <div class="danger-info">
+                <strong>Excluir minha conta</strong>
+                <p>Todos os seus dados serão apagados permanentemente. Esta ação não pode ser desfeita.</p>
+            </div>
+            <button class="btn btn-danger" onclick="openModal('modalDeleteUser')">Excluir conta</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- ============================= -->
+<!-- MODAL: ADICIONAR CONTA        -->
+<!-- ============================= -->
+<div class="modal-overlay" id="modalAddAccount">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>🏦 Nova Conta</h3>
+            <button class="modal-close" onclick="closeModal('modalAddAccount')">✕</button>
+        </div>
+        <form action="/settings/accounts" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nome da conta</label>
+                    <input type="text" name="name" placeholder="Ex: Nubank, Itaú..." required>
+                </div>
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <select name="type">
+                        <option value="banco">🏦 Banco</option>
+                        <option value="cartao">💳 Cartão</option>
+                        <option value="carteira">👛 Carteira</option>
+                        <option value="investimento">📈 Investimento</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Saldo inicial</label>
+                    <input type="number" name="balance" step="0.01" value="0" placeholder="0.00">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ícone</label>
+                        <select name="icon">
+                            <option value="🏦">🏦 Banco</option>
+                            <option value="💳">💳 Cartão</option>
+                            <option value="👛">👛 Carteira</option>
+                            <option value="📈">📈 Investimento</option>
+                            <option value="💰">💰 Cofre</option>
+                            <option value="🏠">🏠 Casa</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cor</label>
+                        <input type="color" name="color" value="#4F46E5">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modalAddAccount')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Criar conta</button>
+            </div>
+        </form>
     </div>
 </div>
+
+<!-- ============================= -->
+<!-- MODAL: EDITAR CONTA           -->
+<!-- ============================= -->
+<div class="modal-overlay" id="modalEditAccount">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>✏️ Editar Conta</h3>
+            <button class="modal-close" onclick="closeModal('modalEditAccount')">✕</button>
+        </div>
+        <form id="formEditAccount" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nome da conta</label>
+                    <input type="text" name="name" id="editAccName" required>
+                </div>
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <select name="type" id="editAccType">
+                        <option value="banco">🏦 Banco</option>
+                        <option value="cartao">💳 Cartão</option>
+                        <option value="carteira">👛 Carteira</option>
+                        <option value="investimento">📈 Investimento</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Saldo</label>
+                    <input type="number" name="balance" id="editAccBalance" step="0.01">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ícone</label>
+                        <select name="icon" id="editAccIcon">
+                            <option value="🏦">🏦 Banco</option>
+                            <option value="💳">💳 Cartão</option>
+                            <option value="👛">👛 Carteira</option>
+                            <option value="📈">📈 Investimento</option>
+                            <option value="💰">💰 Cofre</option>
+                            <option value="🏠">🏠 Casa</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cor</label>
+                        <input type="color" name="color" id="editAccColor" value="#4F46E5">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modalEditAccount')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================= -->
+<!-- MODAL: EXCLUIR CONTA USUÁRIO  -->
+<!-- ============================= -->
+<div class="modal-overlay" id="modalDeleteUser">
+    <div class="modal-box modal-danger">
+        <div class="modal-header">
+            <h3>⚠️ Excluir Conta</h3>
+            <button class="modal-close" onclick="closeModal('modalDeleteUser')">✕</button>
+        </div>
+        <form action="/settings/delete-account" method="POST">
+            <div class="modal-body">
+                <p class="danger-warning">
+                    Esta ação é <strong>irreversível</strong>. Todos os seus dados, transações, categorias e orçamentos serão excluídos permanentemente.
+                </p>
+                <div class="form-group">
+                    <label>Digite <strong>EXCLUIR</strong> para confirmar:</label>
+                    <input type="text" name="confirmation" placeholder="EXCLUIR" required
+                        pattern="EXCLUIR" title="Digite exatamente EXCLUIR">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modalDeleteUser')">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Excluir permanentemente</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // ===== MODAL =====
+    function openModal(id) {
+        document.getElementById(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    // Fechar modal clicando fora
+    document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
+                overlay.classList.remove('active');
+            }
+        });
+    });
+
+    // ===== EDITAR CONTA =====
+    function openEditFromButton(btn) {
+        var id = btn.getAttribute('data-id');
+        var name = btn.getAttribute('data-name');
+        var type = btn.getAttribute('data-type');
+        var balance = btn.getAttribute('data-balance');
+        var icon = btn.getAttribute('data-icon');
+        var color = btn.getAttribute('data-color');
+
+        document.getElementById('formEditAccount').action = '/settings/accounts/' + id + '/edit';
+        document.getElementById('editAccName').value = name;
+        document.getElementById('editAccType').value = type;
+        document.getElementById('editAccBalance').value = balance;
+        document.getElementById('editAccIcon').value = icon;
+        document.getElementById('editAccColor').value = color;
+
+        openModal('modalEditAccount');
+    }
+
+    // ===== APLICAR COR DA BORDA =====
+    document.querySelectorAll('.account-item').forEach(function(item) {
+        var color = item.getAttribute('data-color');
+        if (color) {
+            item.style.borderLeft = '4px solid ' + color;
+        }
+    });
+</script>
 {% endblock %}
